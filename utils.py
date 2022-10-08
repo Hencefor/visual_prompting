@@ -22,7 +22,7 @@ class ImgDataset(Dataset):
 
 def load_data(text_path, img_path):
     text_data = pd.read_csv(text_path,header=None)
-    text_data.columns=['','id','text_a','text_b','label','target']
+    text_data.columns=['num','id','text_a','text_b','label','target']
     image_dirs = os.listdir(img_path)
     image_ids = [f[:-4] for f in image_dirs]
     text_data = text_data[text_data['id'].isin(image_ids)]
