@@ -63,7 +63,7 @@ def parse_option():
                         help='dataset')
     parser.add_argument('--img_path', type=str, default='/content/vaccine_dataset_v2',
                         help='dataset')
-    parser.add_argument('--text_path', type=str, default='/content/vaccine_two_text_label_target.csv',
+    parser.add_argument('--text_path', type=str, default='/content/vaccine_multimodel_withempty_target_lower.csv',
                         help='dataset')
     parser.add_argument('--image_size', type=int, default=224,
                         help='image size')
