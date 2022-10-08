@@ -31,7 +31,7 @@ class ImgDataset(Dataset):
 # #     clip_texts = [text[:155] for text in texts]
 #     text_labels = np.array(text_data['target'].unique())
 # #     labels = [0.0 if l=='society' else 1.0 for l in text_data['label']]
-def load_data(text_path, img_path):
+  def load_data(text_path, img_path):
 #     text_data = pd.read_csv(text_path,header=None)
 #     text_data.columns=['id','text_a','text_b','label']
 #     image_dirs = os.listdir(img_path)
