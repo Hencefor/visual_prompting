@@ -32,7 +32,7 @@ def load_data(text_path, img_path):
     text_labels = np.array(text_data['target'].unique())
 #     labels = [0.0 if l=='society' else 1.0 for l in text_data['label']]
     labels=[]
-    for label in text_data['label']:
+    for label in text_data['target']:
       if label=='individual':
           labels.append(0.0)
       elif label=='community':
