@@ -22,15 +22,27 @@ class ImgDataset(Dataset):
 
 def load_data(text_path, img_path):
     text_data = pd.read_csv(text_path,header=None)
-    text_data.columns=['id','text_a','text_b','label']
+    text_data.columns=['id','text_a','text_b','target']
     image_dirs = os.listdir(img_path)
     image_ids = [f[:-4] for f in image_dirs]
     text_data = text_data[text_data['id'].isin(image_ids)]
     text_data['text'] = text_data['text_a']+" "+text_data['text_b']
 #     texts = list(text_data['text'])
 #     clip_texts = [text[:155] for text in texts]
-    text_labels = np.array(text_data['label'].unique())
-    labels = [0.0 if l=='otherwise' else 1.0 for l in text_data['label']]
+    text_labels = np.array(text_data['target'].unique())
+#     labels = [0.0 if l=='society' else 1.0 for l in text_data['label']]
+    for label in labels:
+      if label='individual':
+          labels.append(0.0)
+      elif label='community':
+          labels.append(1.0)
+      elif label='organization':
+          labels.append(2.0)
+      elif label='society':
+          labels.append(3.0)
+    
+    
+    
     labels = torch.tensor(labels, dtype=torch.long)
     imgs = [Image.open(os.path.join(img_path, img_dir)).convert('RGB') for img_dir in image_dirs]
     return imgs, text_labels, labels
