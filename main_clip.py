@@ -336,6 +336,13 @@ def validate(val_loader, texts, model, prompter, criterion, args):
 
             # measure accuracy and record loss
             acc1 = accuracy(output_prompt, target, topk=(1,))
+            
+            val_preds=output_prompt.cpu().argmax()
+            val_preds = val_preds.numpy()
+            val_targets=target.cpu().numpy()
+            all_preds = val_preds if val_preds is None else np.concatenate(all_preds,val_preds)
+            all_targets = val_targets if all_targets is None else np.concatenate(all_targets,val_targets)
+            
             losses.update(loss.item(), images.size(0))
             top1_prompt.update(acc1[0].item(), images.size(0))
 
@@ -351,7 +358,7 @@ def validate(val_loader, texts, model, prompter, criterion, args):
 
         print(' * Prompt Acc@1 {top1_prompt.avg:.3f} Original Acc@1 {top1_org.avg:.3f}'
               .format(top1_prompt=top1_prompt, top1_org=top1_org))
-
+        print(classification_report(all_targets, all_preds))
         if args.use_wandb:
             wandb.log({
                 'val_loss': losses.avg,
