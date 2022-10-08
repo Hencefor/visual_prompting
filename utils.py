@@ -20,17 +20,17 @@ class ImgDataset(Dataset):
   def __len__(self):
     return self.length
 
-def load_data(text_path, img_path):
-    text_data = pd.read_csv(text_path,header=None)
-    text_data.columns=['id','target','1','2','3']
-    image_dirs = os.listdir(img_path)
-    image_ids = [f[:-4] for f in image_dirs]
-    text_data = text_data[text_data['id'].isin(image_ids)]
-#     text_data['text'] = text_data['text_a']+" "+text_data['text_b']
-#     texts = list(text_data['text'])
-#     clip_texts = [text[:155] for text in texts]
-    text_labels = np.array(text_data['target'].unique())
-#     labels = [0.0 if l=='society' else 1.0 for l in text_data['label']]
+# def load_data(text_path, img_path):
+#     text_data = pd.read_csv(text_path,header=None)
+#     text_data.columns=['id','target','1','2','3']
+#     image_dirs = os.listdir(img_path)
+#     image_ids = [f[:-4] for f in image_dirs]
+#     text_data = text_data[text_data['id'].isin(image_ids)]
+# #     text_data['text'] = text_data['text_a']+" "+text_data['text_b']
+# #     texts = list(text_data['text'])
+# #     clip_texts = [text[:155] for text in texts]
+#     text_labels = np.array(text_data['target'].unique())
+# #     labels = [0.0 if l=='society' else 1.0 for l in text_data['label']]
 def load_data(text_path, img_path):
 #     text_data = pd.read_csv(text_path,header=None)
 #     text_data.columns=['id','text_a','text_b','label']
