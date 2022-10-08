@@ -8,6 +8,7 @@ import random
 import wandb
 
 import torch
+import numpy as np
 import torch.backends.cudnn as cudnn
 from torch.cuda.amp import GradScaler, autocast
 from torch.utils.data import DataLoader, Dataset
@@ -18,6 +19,7 @@ from models import prompters
 from utils import accuracy, AverageMeter, ProgressMeter, save_checkpoint
 from utils import cosine_lr, convert_models_to_fp32, refine_classname
 from utils import ImgDataset, load_data, split_dataset, get_dataset
+from sklearn.metrics import classification_report
 
 
 def parse_option():
@@ -322,6 +324,9 @@ def validate(val_loader, texts, model, prompter, criterion, args):
 
     with torch.no_grad():
         end = time.time()
+        all_preds=None
+        all_targets=None
+        best_acc=0
         for i, (images, target) in enumerate(tqdm(val_loader)):
 
             images = images.to(device)
@@ -340,8 +345,12 @@ def validate(val_loader, texts, model, prompter, criterion, args):
             val_preds=output_prompt.cpu().argmax()
             val_preds = val_preds.numpy()
             val_targets=target.cpu().numpy()
-            all_preds = val_preds if val_preds is None else np.concatenate(all_preds,val_preds)
-            all_targets = val_targets if all_targets is None else np.concatenate(all_targets,val_targets)
+            print("val_preds:",val_preds)
+            print("val_targets:",val_targets)
+            print("all_preds:",all_preds)
+            print("all_targets:",all_targets)
+            all_preds = val_preds if i==0 else np.concatenate((all_preds,val_preds))
+            all_targets = val_targets if i==0 else np.concatenate((all_targets,val_targets))
             
             losses.update(loss.item(), images.size(0))
             top1_prompt.update(acc1[0].item(), images.size(0))
@@ -358,7 +367,9 @@ def validate(val_loader, texts, model, prompter, criterion, args):
 
         print(' * Prompt Acc@1 {top1_prompt.avg:.3f} Original Acc@1 {top1_org.avg:.3f}'
               .format(top1_prompt=top1_prompt, top1_org=top1_org))
+        
         print(classification_report(val_targets.cpu().argmax(dim = 1), val_preds.cpu().argmax(dim = 1)))
+
         if args.use_wandb:
             wandb.log({
                 'val_loss': losses.avg,
