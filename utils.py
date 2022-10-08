@@ -31,22 +31,48 @@ def load_data(text_path, img_path):
 #     clip_texts = [text[:155] for text in texts]
     text_labels = np.array(text_data['target'].unique())
 #     labels = [0.0 if l=='society' else 1.0 for l in text_data['label']]
-    labels=[]
-    for label in text_data['target']:
-      if label=='individual':
-          labels.append(0.0)
-      elif label=='community':
-          labels.append(1.0)
-      elif label=='organization':
-          labels.append(2.0)
-      elif label=='society':
-          labels.append(3.0)
-    
-    
-    
-    labels = torch.tensor(labels, dtype=torch.long)
-    imgs = [Image.open(os.path.join(img_path, img_dir)).convert('RGB') for img_dir in image_dirs]
-    return imgs, text_labels, labels
+def load_data(text_path, img_path):
+#     text_data = pd.read_csv(text_path,header=None)
+#     text_data.columns=['id','text_a','text_b','label']
+#     image_dirs = os.listdir(img_path)
+#     image_ids = [f[:-4] for f in image_dirs]
+#     text_data = text_data[text_data['id'].isin(image_ids)]
+#     text_data['text'] = text_data['text_a']+" "+text_data['text_b']
+# #     texts = list(text_data['text'])
+# #     clip_texts = [text[:155] for text in texts]
+#     text_labels = np.array(text_data['label'].unique())
+#     labels = [0.0 if l=='otherwise' else 1.0 for l in text_data['label']
+    
+    text_dataset = pd.read_csv(text_path,header=None)
+    text_dataset.columns=['id','target','id_jpg','text_a','text_b']
+    for i in range(len(text_dataset["text_a"])):
+        text_dataset["text_a"][i] = str(text_dataset["text_a"][i]).replace("\n", " ").lower()
+        text_dataset["id"][i] = text_dataset["id"][i][:-4] + ".jpg"
+    image_dirs = os.listdir(img_path)
+    text_dataset = text_dataset[text_dataset['id'].isin(image_dirs)]
+    text_labels = np.array(text_dataset['target'].unique())
+
+    Y = np.array(text_dataset['target'])
+    labels = torch.zeros((len(Y),4)) # one-hot encodeing
+    for i in range(len(Y)) :
+        if (Y[i]=="individual") :
+            labels[i][0] = 1
+        elif (Y[i]=="organization") :
+            labels[i][1] = 1
+        elif (Y[i]=="society") :
+            labels[i][2] = 1
+        elif (Y[i]=="community") :
+            labels[i][3] = 1 
+    labels = torch.tensor(labels, dtype=torch.long)
+    
+    image_dirs = []
+    for i in range(len(text_dataset["id"])):
+        image_dirs.append(text_dataset["id"][i])
+    print(len(image_dirs))
+
+    imgs = [Image.open(os.path.join(img_path, img_dir)).convert('RGB') for img_dir in image_dirs]
+    return imgs, text_labels, labels
+    
     
 def split_dataset(imgs, labels, preprocess):
     imgs = [preprocess(d) for d in imgs]
