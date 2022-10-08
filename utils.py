@@ -22,11 +22,11 @@ class ImgDataset(Dataset):
 
 def load_data(text_path, img_path):
     text_data = pd.read_csv(text_path,header=None)
-    text_data.columns=['num','id','text_a','text_b','label','target']
+    text_data.columns=['id','target','1','2','3']
     image_dirs = os.listdir(img_path)
     image_ids = [f[:-4] for f in image_dirs]
     text_data = text_data[text_data['id'].isin(image_ids)]
-    text_data['text'] = text_data['text_a']+" "+text_data['text_b']
+#     text_data['text'] = text_data['text_a']+" "+text_data['text_b']
 #     texts = list(text_data['text'])
 #     clip_texts = [text[:155] for text in texts]
     text_labels = np.array(text_data['target'].unique())
@@ -51,7 +51,7 @@ def load_data(text_path, img_path):
 def split_dataset(imgs, labels, preprocess):
     imgs = [preprocess(d) for d in imgs]
     imgs = torch.stack(imgs)
-    data = [[imgs[i],labels[i]] for i in range(len(imgs)-1)]
+    data = [[imgs[i],labels[i]] for i in range(len(imgs))]
     return random_split(dataset=data, lengths=[int(0.7*len(imgs)), len(imgs)-int(0.7*len(imgs))])
 
 def get_dataset(data, text_labels):
