@@ -377,387 +377,149 @@
 
 # if __name__ == '__main__':
 #     main()
-from __future__ import print_function
-
-import argparse
+import shutil
 import os
-from tqdm import tqdm
-import time
-import random
-import wandb
-
 import torch
 import numpy as np
-import torch.backends.cudnn as cudnn
-from torch.cuda.amp import GradScaler, autocast
-from torch.utils.data import DataLoader, Dataset
-from torchvision.datasets import CIFAR100
+import pandas as pd
+from torch.utils.data.dataset import Dataset
+from torch.utils.data import random_split
+from PIL import Image
+from torchvision import transforms
 
-import clip
-from models import prompters
-from utils import accuracy, AverageMeter, ProgressMeter, save_checkpoint
-from utils import cosine_lr, convert_models_to_fp32, refine_classname
-from utils import ImgDataset, load_data, split_dataset, get_dataset
-from sklearn.metrics import classification_report
+class ImgDataset(Dataset):
+  def __init__(self, data, label_texts):
+    self.classes = label_texts
+    self.data = data
+    self.length = len(data)
 
+  def __getitem__(self, index):
+    return self.data[index][0], self.data[index][1]
+  
+  def __len__(self):
+    return self.length
 
-def parse_option():
-    parser = argparse.ArgumentParser('Visual Prompting for CLIP')
-
-    parser.add_argument('--print_freq', type=int, default=10,
-                        help='print frequency')
-    parser.add_argument('--save_freq', type=int, default=50,
-                        help='save frequency')
-    parser.add_argument('--batch_size', type=int, default=256,
-                        help='batch_size')
-    parser.add_argument('--num_workers', type=int, default=16,
-                        help='num of workers to use')
-    parser.add_argument('--epochs', type=int, default=1000,
-                        help='number of training epoch5s')
-
-    # optimization
-    parser.add_argument('--optim', type=str, default='sgd',
-                        help='optimizer to use')
-    parser.add_argument('--learning_rate', type=float, default=40,
-                        help='learning rate')
-    parser.add_argument("--weight_decay", type=float, default=0,
-                        help="weight decay")
-    parser.add_argument("--warmup", type=int, default=1000,
-                        help="number of steps to warmup for")
-    parser.add_argument('--momentum', type=float, default=0.9,
-                        help='momentum')
-    parser.add_argument('--patience', type=int, default=1000)
-
-    # model
-    parser.add_argument('--model', type=str, default='clip')
-    parser.add_argument('--arch', type=str, default='vit_b32')
-    parser.add_argument('--method', type=str, default='padding',
-                        choices=['padding', 'random_patch', 'fixed_patch'],
-                        help='choose visual prompting method')
-    parser.add_argument('--prompt_size', type=int, default=30,
-                        help='size for visual prompts')
-
-    # dataset
-    parser.add_argument('--root', type=str, default='./data',
-                        help='dataset')
-    parser.add_argument('--dataset', type=str, default='cifar100',
-                        help='dataset')
-    parser.add_argument('--img_path', type=str, default='/content/vaccine_dataset_v2',
-                        help='dataset')
-    parser.add_argument('--text_path', type=str, default='/content/vaccine_multimodel_withempty_target_lower.csv',
-                        help='dataset')
-    parser.add_argument('--image_size', type=int, default=224,
-                        help='image size')
-
-    # other
-    parser.add_argument('--seed', type=int, default=0,
-                        help='seed for initializing training')
-    parser.add_argument('--model_dir', type=str, default='./save/models',
-                        help='path to save models')
-    parser.add_argument('--image_dir', type=str, default='./save/images',
-                        help='path to save images')
-    parser.add_argument('--filename', type=str, default=None,
-                        help='filename to save')
-    parser.add_argument('--trial', type=int, default=1,
-                        help='number of trials')
-    parser.add_argument('--resume', type=str, default=None,
-                        help='path to resume from checkpoint')
-    parser.add_argument('--evaluate', default=False,
-                        action="store_true",
-                        help='evaluate model test set')
-    parser.add_argument('--gpu', type=int, default=None,
-                        help='gpu to use')
-    parser.add_argument('--use_wandb', default=False,
-                        action="store_true",
-                        help='whether to use wandb')
-
-    args = parser.parse_args()
-
-    args.filename = '{}_{}_{}_{}_{}_{}_lr_{}_decay_{}_bsz_{}_warmup_{}_trial_{}'. \
-        format(args.method, args.prompt_size, args.dataset, args.model, args.arch,
-               args.optim, args.learning_rate, args.weight_decay, args.batch_size, args.warmup, args.trial)
-
-    return args
-
-best_acc1 = 0
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
-
-def main():
-    global best_acc1, device
-
-    args = parse_option()
-    print (args)
-
-    if args.seed is not None:
-        random.seed(args.seed)
-        torch.manual_seed(args.seed)
-        cudnn.deterministic = True
-
-    # create model
-    model, preprocess = clip.load('ViT-B/32', device, jit=False)
-    convert_models_to_fp32(model)
-    model.eval()
-
-    prompter = prompters.__dict__[args.method](args).to(device)
-
-    # optionally resume from a checkpoint
-    if args.resume:
-        if os.path.isfile(args.resume):
-            print("=> loading checkpoint '{}'".format(args.resume))
-            if args.gpu is None:
-                checkpoint = torch.load(args.resume)
-            else:
-                # Map model to be loaded to specified single gpu.
-                loc = 'cuda:{}'.format(args.gpu)
-                checkpoint = torch.load(args.resume, map_location=loc)
-            args.start_epoch = checkpoint['epoch']
-            best_acc1 = checkpoint['best_acc1']
-            if args.gpu is not None:
-                # best_acc1 may be from a checkpoint from a different GPU
-                best_acc1 = best_acc1.to(args.gpu)
-            prompter.load_state_dict(checkpoint['state_dict'])
-            print("=> loaded checkpoint '{}' (epoch {})"
-                  .format(args.resume, checkpoint['epoch']))
-        else:
-            print("=> no checkpoint found at '{}'".format(args.resume))
-
-    # create data
-    template = 'This meme is {}'
-    print(f'template: {template}')
+def load_data(text_path, img_path):
+    text_data = pd.read_csv(text_path,header=None)
+    text_data.columns=['id','text_a','text_b','label']
+    image_dirs = os.listdir(img_path)
+    image_ids = [f[:-4] for f in image_dirs]
+    text_data = text_data[text_data['id'].isin(image_ids)]
+    text_data['text'] = text_data['text_a']+" "+text_data['text_b']
+#     texts = list(text_data['text'])
+#     clip_texts = [text[:155] for text in texts]
+    text_labels = np.array(text_data['label'].unique())
+    labels = [0.0 if l=='otherwise' else 1.0 for l in text_data['label']]
+    labels = torch.tensor(labels, dtype=torch.long)
+    imgs = [Image.open(os.path.join(img_path, img_dir)).convert('RGB') for img_dir in image_dirs]
+    return imgs, text_labels, labels
     
-    if args.dataset == 'cifar100':
-        train_dataset = CIFAR100(args.root, transform=preprocess,
-                                 download=True, train=True)
+def split_dataset(imgs, labels, preprocess):
+    imgs = [preprocess(d) for d in imgs]
+    imgs = torch.stack(imgs)
+    data = [[imgs[i],labels[i]] for i in range(len(imgs))]
+    return random_split(dataset=data, lengths=[int(0.7*len(imgs)), len(imgs)-int(0.7*len(imgs))])
 
-        val_dataset = CIFAR100(args.root, transform=preprocess,
-                               download=True, train=False)
-    else:
-        imgs, texts, labels = load_data(args.text_path, args.img_path)
-        train_data, val_data = split_dataset(imgs, labels, preprocess)
-        train_dataset = get_dataset(train_data, texts)
-        val_dataset = get_dataset(val_data, texts)
+def get_dataset(data, text_labels):
+    return ImgDataset(data, text_labels)
+    
+def convert_models_to_fp32(model):
+    for p in model.parameters():
+        p.data = p.data.float()
+        if p.grad:
+            p.grad.data = p.grad.data.float()
 
-    train_loader = DataLoader(train_dataset,
-                              batch_size=args.batch_size, pin_memory=True,
-                              num_workers=args.num_workers, shuffle=True)
 
-    val_loader = DataLoader(val_dataset,
-                            batch_size=args.batch_size, pin_memory=True,
-                            num_workers=args.num_workers, shuffle=False)
+def refine_classname(class_names):
+    for i, class_name in enumerate(class_names):
+        class_names[i] = class_name.lower().replace('_', ' ').replace('-', ' ')
+    return class_names
 
-    class_names = train_dataset.classes
-    class_names = refine_classname(class_names)
-    texts = [template.format(label) for label in class_names]
 
-    # define criterion and optimizer
-    optimizer = torch.optim.SGD(prompter.parameters(),
-                                lr=args.learning_rate,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay)
+def save_checkpoint(state, args, is_best=False, filename='checkpoint.pth.tar'):
+    savefile = os.path.join(args.model_folder, filename)
+    bestfile = os.path.join(args.model_folder, 'model_best.pth.tar')
+    torch.save(state, savefile)
+    if is_best:
+        shutil.copyfile(savefile, bestfile)
+        print ('saved best file')
 
-    criterion = torch.nn.CrossEntropyLoss().to(device)
-    scaler = GradScaler()
-    total_steps = len(train_loader) * args.epochs
-    scheduler = cosine_lr(optimizer, args.learning_rate, args.warmup, total_steps)
 
-    cudnn.benchmark = True
+def assign_learning_rate(optimizer, new_lr):
+    for param_group in optimizer.param_groups:
+        param_group["lr"] = new_lr
 
-    # make dir
-    refined_template = template.lower().replace(' ', '_')
-    args.filename = f'{args.filename}_template_{refined_template}'
 
-    args.model_folder = os.path.join(args.model_dir, args.filename)
-    if not os.path.isdir(args.model_folder):
-        os.makedirs(args.model_folder)
+def _warmup_lr(base_lr, warmup_length, step):
+    return base_lr * (step + 1) / warmup_length
 
-    # wandb
-    if args.use_wandb:
-        wandb.init(project='Visual Prompting')
-        wandb.config.update(args)
-        wandb.run.name = args.filename
-        wandb.watch(prompter, criterion, log='all', log_freq=10)
 
-    if args.evaluate:
-        acc1 = validate(val_loader, texts, model, prompter, criterion, args)
-        return
-
-    epochs_since_improvement = 0
-
-    for epoch in range(args.epochs):
-
-        # train for one epoch
-        train(train_loader, texts, model, prompter, optimizer, scheduler, criterion, scaler, epoch, args)
-
-        # evaluate on validation set
-        acc1 = validate(val_loader, texts, model, prompter, criterion, args)
-
-        # remember best acc@1 and save checkpoint
-        is_best = acc1 > best_acc1
-        best_acc1 = max(acc1, best_acc1)
-
-        save_checkpoint({
-            'epoch': epoch + 1,
-            'state_dict': prompter.state_dict(),
-            'best_acc1': best_acc1,
-            'optimizer': optimizer.state_dict(),
-        }, args, is_best=is_best)
-
-        if is_best:
-            epochs_since_improvement = 0
+def cosine_lr(optimizer, base_lr, warmup_length, steps):
+    def _lr_adjuster(step):
+        if step < warmup_length:
+            lr = _warmup_lr(base_lr, warmup_length, step)
         else:
-            epochs_since_improvement += 1
-            print(f"There's no improvement for {epochs_since_improvement} epochs.")
-
-            if epochs_since_improvement >= args.patience:
-                print("The training halted by early stopping criterion.")
-                break
-
-    wandb.run.finish()
+            e = step - warmup_length
+            es = steps - warmup_length
+            lr = 0.5 * (1 + np.cos(np.pi * e / es)) * base_lr
+        assign_learning_rate(optimizer, lr)
+        return lr
+    return _lr_adjuster
 
 
-def train(train_loader, texts, model, prompter, optimizer, scheduler, criterion, scaler, epoch, args):
-    batch_time = AverageMeter('Time', ':6.3f')
-    data_time = AverageMeter('Data', ':6.3f')
-    losses = AverageMeter('Loss', ':.4e')
-    top1 = AverageMeter('Acc@1', ':6.2f')
-    progress = ProgressMeter(
-        len(train_loader),
-        [batch_time, data_time, losses, top1],
-        prefix="Epoch: [{}]".format(epoch))
-
-    # switch to train mode
-    prompter.train()
-
-    num_batches_per_epoch = len(train_loader)
-
-    end = time.time()
-    for i, (images, target) in enumerate(tqdm(train_loader)):
-
-        # measure data loading time
-        data_time.update(time.time() - end)
-
-        # adjust learning rate
-        step = num_batches_per_epoch * epoch + i
-        scheduler(step)
-
-        optimizer.zero_grad()
-        
-        images = images.to(device)
-        target = target.to(device)
-        text_tokens = clip.tokenize(texts).to(device)
-
-        # with automatic mixed precision
-        with autocast():
-            prompted_images = prompter(images)
-            output, _ = model(prompted_images, text_tokens)
-            loss = criterion(output, target)
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-        scaler.update()
-
-        # Note: we clamp to 4.6052 = ln(100), as in the original paper.
-        model.logit_scale.data = torch.clamp(model.logit_scale.data, 0, 4.6052)
-
-        # measure accuracy
-        acc1 = accuracy(output, target, topk=(1,))
-        losses.update(loss.item(), images.size(0))
-        top1.update(acc1[0].item(), images.size(0))
-
-        # measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
-
-        if i % args.print_freq == 0:
-            progress.display(i)
-
-            if args.use_wandb:
-                wandb.log({
-                    'training_loss': losses.avg,
-                    'training_acc': top1.avg
-                     })
-
-        if i % args.save_freq == 0:
-            save_checkpoint({
-                'epoch': epoch + 1,
-                'state_dict': prompter.state_dict(),
-                'best_acc1': best_acc1,
-                'optimizer': optimizer.state_dict(),
-            }, args)
-
-    return losses.avg, top1.avg
-
-
-def validate(val_loader, texts, model, prompter, criterion, args):
-    batch_time = AverageMeter('Time', ':6.3f')
-    losses = AverageMeter('Loss', ':.4e')
-    top1_org = AverageMeter('Original Acc@1', ':6.2f')
-    top1_prompt = AverageMeter('Prompt Acc@1', ':6.2f')
-    progress = ProgressMeter(
-        len(val_loader),
-        [batch_time, losses, top1_org, top1_prompt],
-        prefix='Validate: ')
-
-    # switch to evaluation mode
-    prompter.eval()
-
+def accuracy(output, target, topk=(1,)):
+    """Computes the accuracy over the k top predictions for the specified values of k"""
     with torch.no_grad():
-        end = time.time()
-        all_preds=None
-        all_targets=None
-        best_acc=0
-        for i, (images, target) in enumerate(tqdm(val_loader)):
+        maxk = max(topk)
+        batch_size = target.size(0)
 
-            images = images.to(device)
-            target = target.to(device)
-            text_tokens = clip.tokenize(texts).to(device)
-            prompted_images = prompter(images)
+        _, pred = output.topk(maxk, 1, True, True)
+        pred = pred.t()
+        correct = pred.eq(target.view(1, -1).expand_as(pred))
 
-            # compute output
-            output_prompt, _ = model(prompted_images, text_tokens)
-            output_org, _ = model(images, text_tokens)
-            loss = criterion(output_prompt, target)
-
-            # measure accuracy and record loss
-            acc1 = accuracy(output_prompt, target, topk=(1,))
-            
-            val_preds=output_prompt.cpu().argmax()
-            val_preds = val_preds.numpy()
-            val_targets=target.cpu().numpy()
-            print("val_preds:",val_preds)
-            print("val_targets:",val_targets)
-            print("all_preds:",all_preds)
-            print("all_targets:",all_targets)
-            all_preds = val_preds if i==0 else np.concatenate((all_preds,val_preds))
-            all_targets = val_targets if i==0 else np.concatenate((all_targets,val_targets))
-            
-            losses.update(loss.item(), images.size(0))
-            top1_prompt.update(acc1[0].item(), images.size(0))
-
-            acc1 = accuracy(output_org, target, topk=(1,))
-            top1_org.update(acc1[0].item(), images.size(0))
-
-            # measure elapsed time
-            batch_time.update(time.time() - end)
-            end = time.time()
-
-            if i % args.print_freq == 0:
-                progress.display(i)
-
-        print(' * Prompt Acc@1 {top1_prompt.avg:.3f} Original Acc@1 {top1_org.avg:.3f}'
-              .format(top1_prompt=top1_prompt, top1_org=top1_org))
-        
-        print(classification_report(val_targets.cpu().argmax(dim = 1), val_preds.cpu().argmax(dim = 1)))
-
-        if args.use_wandb:
-            wandb.log({
-                'val_loss': losses.avg,
-                'val_acc_prompt': top1_prompt.avg,
-                'val_acc_org': top1_org.avg,
-            })
-
-    return top1_prompt.avg
+        res = []
+        for k in topk:
+            correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
+            res.append(correct_k.mul_(100.0 / batch_size))
+        return res
 
 
-if __name__ == '__main__':
-    main()
+class AverageMeter(object):
+    """Computes and stores the average and current value"""
+    def __init__(self, name, fmt=':f'):
+        self.name = name
+        self.fmt = fmt
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
+    def __str__(self):
+        fmtstr = '{name} {val' + self.fmt + '} ({avg' + self.fmt + '})'
+        return fmtstr.format(**self.__dict__)
+
+
+class ProgressMeter(object):
+    def __init__(self, num_batches, meters, prefix=""):
+        self.batch_fmtstr = self._get_batch_fmtstr(num_batches)
+        self.meters = meters
+        self.prefix = prefix
+
+    def display(self, batch):
+        entries = [self.prefix + self.batch_fmtstr.format(batch)]
+        entries += [str(meter) for meter in self.meters]
+        print('\t'.join(entries))
+
+    def _get_batch_fmtstr(self, num_batches):
+        num_digits = len(str(num_batches // 1))
+        fmt = '{:' + str(num_digits) + 'd}'
+        return '[' + fmt + '/' + fmt.format(num_batches) + ']'
