@@ -61,7 +61,6 @@ def load_data(text_path, img_path):
     print(type(text_dataset))
     print(text_dataset['id_jpg'][10])
     for i in range(1,4503):
-      print(text_dataset['id_jpg'][i])
       image_dirs.append(text_dataset["id"][i])
     
     print(len(image_dirs))
