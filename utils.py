@@ -62,7 +62,6 @@ def load_data(text_path, img_path):
     imgs = [Image.open(os.path.join(img_path, img_dir)).convert('RGB') for img_dir in image_dirs]
     print('finalimgs:'+len(imgs))
     return imgs, text_labels, labels
-    
 def split_dataset(imgs, labels, preprocess):
     imgs = [preprocess(d) for d in imgs]
     imgs = torch.stack(imgs)
