@@ -57,17 +57,17 @@
 #     parser.add_argument('--prompt_size', type=int, default=30,
 #                         help='size for visual prompts')
 
-#     # dataset
-#     parser.add_argument('--root', type=str, default='./data',
-#                         help='dataset')
-#     parser.add_argument('--dataset', type=str, default='cifar100',
-#                         help='dataset')
-#     parser.add_argument('--img_path', type=str, default='/content/vaccine_dataset_v2',
-#                         help='dataset')
-#     parser.add_argument('--text_path', type=str, default='/content/vaccine_multimodel_withempty_target_lower.csv',
-#                         help='dataset')
-#     parser.add_argument('--image_size', type=int, default=224,
-#                         help='image size')
+    # dataset
+    parser.add_argument('--root', type=str, default='./data',
+                        help='dataset')
+    parser.add_argument('--dataset', type=str, default='cifar100',
+                        help='dataset')
+    parser.add_argument('--img_path', type=str, default='/content/vaccine_dataset_v2',
+                        help='dataset')
+    parser.add_argument('--text_path', type=str, default='/content/vaccine_multimodel_withempty_target_lower.csv',
+                        help='dataset')
+    parser.add_argument('--image_size', type=int, default=224,
+                        help='image size')
 
 #    # other
 #     parser.add_argument('--seed', type=int, default=0,
