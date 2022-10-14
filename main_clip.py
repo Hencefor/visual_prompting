@@ -6,9 +6,8 @@ from tqdm import tqdm
 import time
 import random
 import wandb
-
-import torch
 import numpy as np
+import torch
 import torch.backends.cudnn as cudnn
 from torch.cuda.amp import GradScaler, autocast
 from torch.utils.data import DataLoader, Dataset
@@ -58,7 +57,7 @@ def parse_option():
     parser.add_argument('--prompt_size', type=int, default=30,
                         help='size for visual prompts')
 
-   # dataset
+    # dataset
     parser.add_argument('--root', type=str, default='./data',
                         help='dataset')
     parser.add_argument('--dataset', type=str, default='cifar100',
@@ -70,7 +69,7 @@ def parse_option():
     parser.add_argument('--image_size', type=int, default=224,
                         help='image size')
 
-    # other
+   # other
     parser.add_argument('--seed', type=int, default=0,
                         help='seed for initializing training')
     parser.add_argument('--model_dir', type=str, default='./save/models',
@@ -342,15 +341,11 @@ def validate(val_loader, texts, model, prompter, criterion, args):
             # measure accuracy and record loss
             acc1 = accuracy(output_prompt, target, topk=(1,))
             
-            val_preds=output_prompt.cpu().argmax(axis=-1)
+            val_preds=output_prompt.cpu().argmax()
             val_preds = val_preds.numpy()
             val_targets=target.cpu().numpy()
-#             print("val_preds:",val_preds)
-#             print("val_targets:",val_targets)
-#             print("all_preds:",all_preds)
-#             print("all_targets:",all_targets)
-            all_preds = val_preds if i==0 else np.concatenate((all_preds,val_preds))
-            all_targets = val_targets if i==0 else np.concatenate((all_targets,val_targets))
+            all_preds = val_preds if val_preds is None else np.concatenate((all_preds,val_preds))
+            all_targets = val_targets if all_targets is None else np.concatenate((all_targets,val_targets))
             
             losses.update(loss.item(), images.size(0))
             top1_prompt.update(acc1[0].item(), images.size(0))
@@ -368,7 +363,7 @@ def validate(val_loader, texts, model, prompter, criterion, args):
         print(' * Prompt Acc@1 {top1_prompt.avg:.3f} Original Acc@1 {top1_org.avg:.3f}'
               .format(top1_prompt=top1_prompt, top1_org=top1_org))
         
-        print(classification_report(all_targets, all_preds))
+        print(classification_report(val_targets.cpu().argmax(dim = 1), val_preds.cpu().argmax(dim = 1)))
 
         if args.use_wandb:
             wandb.log({
