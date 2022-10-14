@@ -34,6 +34,7 @@ class ImgDataset(Dataset):
 def load_data(text_path, img_path):
     text_dataset = pd.read_csv(text_path,header=None)
     text_dataset.columns=['id','target','id_jpg','text_a','text_b']
+    print('original'+str(len(text_dataset)))
     for i in range(len(text_dataset["text_a"])):
         text_dataset["text_a"][i] = str(text_dataset["text_a"][i]).replace("\n", " ").lower()
         text_dataset["id"][i] = text_dataset["id"][i][:-4] + ".jpg"
