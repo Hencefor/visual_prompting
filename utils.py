@@ -46,7 +46,8 @@ def load_data(text_path, img_path):
     text_labels = np.array(text_dataset['target'].unique())
     print('text_label'+str(len(text_dataset)))
     Y = np.array(text_dataset['target'])
-    labels = torch.zeros((len(Y),4)) # one-hot encodeing
+    #labels = torch.zeros((len(Y),4)) # one-hot encodeing
+    lbaels = []
     for i in range(len(Y)) :
         if (Y[i]=="individual") :
             labels[i][0] = 1
@@ -56,7 +57,17 @@ def load_data(text_path, img_path):
             labels[i][2] = 1
         elif (Y[i]=="community") :
             labels[i][3] = 1 
-    labels = torch.tensor(labels, dtype=torch.float)
+            
+    for i in range(len(Y)) :
+        if (Y[i]=="individual") :
+            labels[i] = 0
+        elif (Y[i]=="organization") :
+            labels[i]= 1
+        elif (Y[i]=="society") :
+            labels[i] = 2
+        elif (Y[i]=="community") :
+            labels[i] = 3 
+    labels = torch.tensor(labels, dtype=torch.long)
     image_dirs = []
     print(type(text_dataset))
     print(text_dataset['id_jpg'][10])
