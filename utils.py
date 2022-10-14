@@ -37,7 +37,7 @@ def load_data(text_path, img_path):
     print('original'+str(len(text_dataset)))
     for i in range(len(text_dataset["text_a"])):
         text_dataset["text_a"][i] = str(text_dataset["text_a"][i]).replace("\n", " ").lower()
-        text_dataset["id"][i] = text_dataset["id"][i][:-4] + ".jpg"
+        text_dataset["id"][i] = text_dataset["id_jpg"][i]"
     image_dirs = os.listdir(img_path)
     print('image_dirs:'str(len(image_dirs))
     text_dataset = text_dataset[text_dataset['id'].isin(image_dirs)]
