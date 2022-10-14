@@ -58,7 +58,7 @@ def parse_option():
     parser.add_argument('--prompt_size', type=int, default=30,
                         help='size for visual prompts')
 
-    # dataset
+   # dataset
     parser.add_argument('--root', type=str, default='./data',
                         help='dataset')
     parser.add_argument('--dataset', type=str, default='cifar100',
@@ -342,13 +342,13 @@ def validate(val_loader, texts, model, prompter, criterion, args):
             # measure accuracy and record loss
             acc1 = accuracy(output_prompt, target, topk=(1,))
             
-            val_preds=output_prompt.cpu().argmax()
+            val_preds=output_prompt.cpu().argmax(axis=-1)
             val_preds = val_preds.numpy()
             val_targets=target.cpu().numpy()
-            print("val_preds:",val_preds)
-            print("val_targets:",val_targets)
-            print("all_preds:",all_preds)
-            print("all_targets:",all_targets)
+#             print("val_preds:",val_preds)
+#             print("val_targets:",val_targets)
+#             print("all_preds:",all_preds)
+#             print("all_targets:",all_targets)
             all_preds = val_preds if i==0 else np.concatenate((all_preds,val_preds))
             all_targets = val_targets if i==0 else np.concatenate((all_targets,val_targets))
             
@@ -368,7 +368,7 @@ def validate(val_loader, texts, model, prompter, criterion, args):
         print(' * Prompt Acc@1 {top1_prompt.avg:.3f} Original Acc@1 {top1_org.avg:.3f}'
               .format(top1_prompt=top1_prompt, top1_org=top1_org))
         
-        print(classification_report(val_targets.cpu().argmax(dim = 1), val_preds.cpu().argmax(dim = 1)))
+        print(classification_report(all_targets, all_preds))
 
         if args.use_wandb:
             wandb.log({
