@@ -377,7 +377,84 @@
 
 # if __name__ == '__main__':
 #     main()
-.add_argument('--image_dir', type=str, default='./save/images',
+from __future__ import print_function
+
+import argparse
+import os
+from tqdm import tqdm
+import time
+import random
+import wandb
+
+import torch
+import numpy as np
+import torch.backends.cudnn as cudnn
+from torch.cuda.amp import GradScaler, autocast
+from torch.utils.data import DataLoader, Dataset
+from torchvision.datasets import CIFAR100
+
+import clip
+from models import prompters
+from utils import accuracy, AverageMeter, ProgressMeter, save_checkpoint
+from utils import cosine_lr, convert_models_to_fp32, refine_classname
+from utils import ImgDataset, load_data, split_dataset, get_dataset
+from sklearn.metrics import classification_report
+
+
+def parse_option():
+    parser = argparse.ArgumentParser('Visual Prompting for CLIP')
+
+    parser.add_argument('--print_freq', type=int, default=10,
+                        help='print frequency')
+    parser.add_argument('--save_freq', type=int, default=50,
+                        help='save frequency')
+    parser.add_argument('--batch_size', type=int, default=256,
+                        help='batch_size')
+    parser.add_argument('--num_workers', type=int, default=16,
+                        help='num of workers to use')
+    parser.add_argument('--epochs', type=int, default=1000,
+                        help='number of training epoch5s')
+
+    # optimization
+    parser.add_argument('--optim', type=str, default='sgd',
+                        help='optimizer to use')
+    parser.add_argument('--learning_rate', type=float, default=40,
+                        help='learning rate')
+    parser.add_argument("--weight_decay", type=float, default=0,
+                        help="weight decay")
+    parser.add_argument("--warmup", type=int, default=1000,
+                        help="number of steps to warmup for")
+    parser.add_argument('--momentum', type=float, default=0.9,
+                        help='momentum')
+    parser.add_argument('--patience', type=int, default=1000)
+
+    # model
+    parser.add_argument('--model', type=str, default='clip')
+    parser.add_argument('--arch', type=str, default='vit_b32')
+    parser.add_argument('--method', type=str, default='padding',
+                        choices=['padding', 'random_patch', 'fixed_patch'],
+                        help='choose visual prompting method')
+    parser.add_argument('--prompt_size', type=int, default=30,
+                        help='size for visual prompts')
+
+    # dataset
+    parser.add_argument('--root', type=str, default='./data',
+                        help='dataset')
+    parser.add_argument('--dataset', type=str, default='cifar100',
+                        help='dataset')
+    parser.add_argument('--img_path', type=str, default='/content/vaccine_dataset_v2',
+                        help='dataset')
+    parser.add_argument('--text_path', type=str, default='/content/clean_vaccine_new_v2_text.csv',
+                        help='dataset')
+    parser.add_argument('--image_size', type=int, default=224,
+                        help='image size')
+
+    # other
+    parser.add_argument('--seed', type=int, default=0,
+                        help='seed for initializing training')
+    parser.add_argument('--model_dir', type=str, default='./save/models',
+                        help='path to save models')
+    parser.add_argument('--image_dir', type=str, default='./save/images',
                         help='path to save images')
     parser.add_argument('--filename', type=str, default=None,
                         help='filename to save')
