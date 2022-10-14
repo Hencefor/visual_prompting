@@ -59,9 +59,9 @@ def load_data(text_path, img_path):
     labels = torch.tensor(labels, dtype=torch.float)
     image_dirs = []
     print(type(text_dataset))
-    print(text_dataset['id_jpg'])
-    for i in range(len(text_dataset["id"])):
-      print(text_dataset["id_jpg"][i])
+    print(text_dataset['id_jpg'][10])
+    for i in range(len(text_dataset)):
+      print(text_dataset['id_jpg'][i])
       #image_dirs.append(text_dataset["id"][i])
     
     print(len(image_dirs))
