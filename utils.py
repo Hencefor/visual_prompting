@@ -60,7 +60,7 @@ def load_data(text_path, img_path):
     
     print(len(image_dirs))
     imgs = [Image.open(os.path.join(img_path, img_dir)).convert('RGB') for img_dir in image_dirs]
-    print('finalimgs:'+len(imgs))
+    print('finalimgs:'+str(len(imgs)))
     return imgs, text_labels, labels
 def split_dataset(imgs, labels, preprocess):
     imgs = [preprocess(d) for d in imgs]
