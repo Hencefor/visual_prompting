@@ -39,6 +39,7 @@ def load_data(text_path, img_path):
         text_dataset["text_a"][i] = str(text_dataset["text_a"][i]).replace("\n", " ").lower()
         text_dataset["id"][i] = text_dataset["id"][i][:-4] + ".jpg"
     image_dirs = os.listdir(img_path)
+    print('image_dirs:'str(len(image_dirs))
     text_dataset = text_dataset[text_dataset['id'].isin(image_dirs)]
     print('text_dataset:'+str(len(text_dataset)))
     text_labels = np.array(text_dataset['target'].unique())
