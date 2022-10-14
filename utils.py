@@ -48,15 +48,15 @@ def load_data(text_path, img_path):
     Y = np.array(text_dataset['target'])
     #labels = torch.zeros((len(Y),4)) # one-hot encodeing
     lbaels = []
-    for i in range(len(Y)) :
-        if (Y[i]=="individual") :
-            labels[i][0] = 1
-        elif (Y[i]=="organization") :
-            labels[i][1] = 1
-        elif (Y[i]=="society") :
-            labels[i][2] = 1
-        elif (Y[i]=="community") :
-            labels[i][3] = 1 
+#     for i in range(len(Y)) :
+#         if (Y[i]=="individual") :
+#             labels[i][0] = 1
+#         elif (Y[i]=="organization") :
+#             labels[i][1] = 1
+#         elif (Y[i]=="society") :
+#             labels[i][2] = 1
+#         elif (Y[i]=="community") :
+#             labels[i][3] = 1 
             
     for i in range(len(Y)) :
         if (Y[i]=="individual") :
