@@ -60,13 +60,13 @@ def load_data(text_path, img_path):
             
     for i in range(len(Y)) :
         if (Y[i]=="individual") :
-            labels[i] = 0
+            labels.append(0)
         elif (Y[i]=="organization") :
-            labels[i]= 1
+            labels.append(1)
         elif (Y[i]=="society") :
-            labels[i] = 2
+            labels.append(2)
         elif (Y[i]=="community") :
-            labels[i] = 3 
+            labels.append(3) 
     labels = torch.tensor(labels, dtype=torch.long)
     image_dirs = []
     print(type(text_dataset))
