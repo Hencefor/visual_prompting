@@ -39,7 +39,9 @@ def load_data(text_path, img_path):
         text_dataset["id"][i] = text_dataset["id"][i][:-4] + ".jpg"
     image_dirs = os.listdir(img_path)
     text_dataset = text_dataset[text_dataset['id'].isin(image_dirs)]
+    print('text_dataset:'+len(text_dataset))
     text_labels = np.array(text_dataset['target'].unique())
+    print('text_label'+len(text_dataset))
 
     Y = np.array(text_dataset['target'])
     labels = torch.zeros((len(Y),4)) # one-hot encodeing
@@ -56,8 +58,10 @@ def load_data(text_path, img_path):
     image_dirs = []
     for i in range(len(text_dataset["id"])):
         image_dirs.append(text_dataset["id"][i])
+    
     print(len(image_dirs))
     imgs = [Image.open(os.path.join(img_path, img_dir)).convert('RGB') for img_dir in image_dirs]
+    print('finalimgs:'+len(imgs))
     return imgs, text_labels, labels
     
 def split_dataset(imgs, labels, preprocess):
