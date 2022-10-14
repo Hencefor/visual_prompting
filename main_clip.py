@@ -377,7 +377,7 @@
 
 # if __name__ == '__main__':
 #     main()
-rom __future__ import print_function
+from __future__ import print_function
 
 import argparse
 import os
