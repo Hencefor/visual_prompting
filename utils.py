@@ -60,7 +60,8 @@ def load_data(text_path, img_path):
     image_dirs = []
     print(type(text_dataset))
     for i in range(len(text_dataset["id"])):
-        image_dirs.append(text_dataset["id"][i])
+      print(text_dataset["id"][i])
+      #image_dirs.append(text_dataset["id"][i])
     
     print(len(image_dirs))
     imgs = [Image.open(os.path.join(img_path, img_dir)).convert('RGB') for img_dir in image_dirs]
