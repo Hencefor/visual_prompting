@@ -55,7 +55,7 @@ def load_data(text_path, img_path):
             labels[i][2] = 1
         elif (Y[i]=="community") :
             labels[i][3] = 1 
-    labels = torch.tensor(labels, dtype=torch.long)
+    labels = torch.tensor(labels, dtype=torch.float)
     image_dirs = []
     for i in range(len(text_dataset["id"])):
         image_dirs.append(text_dataset["id"][i])
