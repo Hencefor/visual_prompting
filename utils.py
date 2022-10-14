@@ -133,8 +133,7 @@ def cosine_lr(optimizer, base_lr, warmup_length, steps):
 
 def accuracy(output, target, topk=(1,)):
     with torch.no_grad():
-        import pdb
-        pdb.set_trace()
+        
         maxk = max(topk)
         batch_size = target.size(0)
         _, pred = output.topk(maxk, 1, True, True)
